@@ -1,0 +1,7 @@
+README.md
+setup.py
+DynonToHud.egg-info/PKG-INFO
+DynonToHud.egg-info/SOURCES.txt
+DynonToHud.egg-info/dependency_links.txt
+DynonToHud.egg-info/requires.txt
+DynonToHud.egg-info/top_level.txt
