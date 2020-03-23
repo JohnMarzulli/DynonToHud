@@ -5,7 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "DynonToHud",
+            "type": "node",
+            "request": "launch",
+            "name": "DynonToHud (Node)",
+            "program": "${workspaceFolder}/build/index.js",
+            "preLaunchTask": "tsc: build - tsconfig.json",
+            "skipFiles": ["<node_internals>/**"],
+            "outFiles": ["${workspaceFolder}/**/*.js"]
+        },
+        {
+            "name": "SerialCopy",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/capture_and_log.py",
