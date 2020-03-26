@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-import serial
 import datetime
+import time
 
-print(serial.__file__)
+import serial
 
 SERIAL_DEVICE = '/dev/ttyUSB0'
 
@@ -18,16 +18,20 @@ serial_reader = serial.Serial(
     parity=serial.PARITY_NONE,
     stopbits=serial.STOPBITS_ONE,
     bytesize=serial.EIGHTBITS,
-    timeout=0)
+    timeout=10)
 
 serial_reader.flushInput()
 
 with open(new_log_fileName, 'w') as output_file:
     while True:
+        # Section 11-1
+        # https://www.dynonavionics.com/includes/guides/FlightDEK-D180_Pilot's_User_Guide_Rev_H.pdf
         # Would have a cr/lf at the end
-        # "00082119+058-00541301200+9141+011-01+15003EA0C701A4"
+        # EFIS: "21301133-008+00001100000+0024-002-00+1099FC39FE01AC"
+        # EMS : "211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A"
         serial_bytes = serial_reader.readline()
-        serial_input = str(serial_bytes, encoding='ascii') + "\n"
-        output_file.write(serial_input)
-        output_file.flush()
-        print(serial_input)
+        if serial_bytes != None and len(serial_bytes) > 0:
+            serial_input = str(serial_bytes, encoding='ascii')
+            output_file.write(serial_input)
+            output_file.flush()
+            print(serial_input)
