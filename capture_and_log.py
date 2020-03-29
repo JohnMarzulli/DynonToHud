@@ -163,7 +163,7 @@ class EfisAndEmsDecoder(object):
         decoded_efis = {
             "GPSTime": last_time_received,
             "GPSLastGPSTimeStratuxTime": last_time_received,
-            "BaroLastMeasurementTime": "0001-01-01T00:06:44.23Z",
+            "BaroLastMeasurementTime": last_time_received,
             # Degrees. 3276.7 = Invalid.
             "AHRSPitch": pitch,
             # Degrees. 3276.7 = Invalid.
