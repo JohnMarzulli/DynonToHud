@@ -6,8 +6,8 @@ import time
 
 import serial
 
-EFIS_SERIAL_PORT = '/dev/ttyUSB0'
-EMS_SERIAL_PORT = '/dev/ttyUSB1'
+SERIAL_PORT_0 = '/dev/ttyUSB0'
+SERIAL_PORT_1 = '/dev/ttyUSB1'
 
 METERS_TO_YARDS = 1.09361
 
@@ -263,45 +263,65 @@ class EfisAndEmsDecoder(object):
 decoder = EfisAndEmsDecoder()
 
 
-def efis_reader_loop():
-    efis_serial_connection = DynonSerialReader(EFIS_SERIAL_PORT)
+def open_dynon_serials_connection(
+    port
+):
+    """
+    Attempts to open a serial connection to the Dynon for
+    the given port.
+    """
+
+    serial_connection = None
+
+    while serial_connection is None or serial_connection.serial_reader is None:
+        try:
+            serial_connection = DynonSerialReader(port)
+        finally:
+            if serial_connection is None or serial_connection.serial_reader is None:
+                time.sleep(1)
+
+    return serial_connection
+
+
+def read_and_decode_loop(
+    port
+):
+    """
+    Starts a USB/Serial reading loop for the given port.
+    Attempts to decode the raw feed as both EFIS and EMS
+    since both types are regular in length and
+    can be determined.
+    """
 
     while True:
-        decoder.decode_efis(efis_serial_connection.read())
+        try:
+            serial_connection = open_dynon_serials_connection(port)
 
-        decoder.decode_efis(
-            "21301134-008+00001100000-0043-001-00+1099FC39F901A3")
-        decoder.decode_efis(
-            "21301212-008+00001100000-0043-001-00+1099FC39F901A0")
-        decoder.decode_efis(
-            "21301213-008+00001100000-0043-001-00+1099FC39F901A1")
-        decoder.decode_efis(
-            "21301334-009+00001100000+0024-002-00+1099FC39FE01B0")
-        decoder.decode_efis(
-            "21301335-009+00001100000+0024-002-00+1099FC39FE01B1")
+            while serial_connection.serial_reader is not None:
+                raw_feed = serial_connection.read()
+                decoder.decode_efis(raw_feed)
+                decoder.decode_ems(raw_feed)
+        finally:
+            time.sleep(1)
 
 
-def ems_reader_loop():
-    ems_serial_connection = DynonSerialReader(EMS_SERIAL_PORT)
-
-    while True:
-        decoder.decode_ems(ems_serial_connection.read())
-
-        decoder.decode_ems(
-            "211326513170079023001119-020000000000066059CHT00092CHT00090N/AXXXXX097100840084055604990665112709209044723221533911035D")
-        decoder.decode_ems(
-            "211327033170079023001119-020000000000066059CHT00092CHT00090N/AXXXXX0970008400840556049806641126092090447232215339110363")
-        decoder.decode_ems(
-            "211327193170079023001119-020000000000066059CHT00092CHT00090N/AXXXXX097000840084055504980664112609209044623121533911035F")
-        decoder.decode_ems(
-            "2132094932550740230010000000000000000065058CHT00089CHT00087N/AXXXXX1050007600760624065407481279089087515242224346110358")
+def create_serial_loop_thread(
+    port
+):
+    """
+    Create a threading object for looping and reading a
+    serial port off the Dynon.
+    """
+    return threading.Thread(
+        target=read_and_decode_loop,
+        kwargs={"port": port})
 
 
-ems_thread = threading.Thread(target=ems_reader_loop)
-efis_thread = threading.Thread(target=efis_reader_loop)
+serial_port_0_thread = create_serial_loop_thread(SERIAL_PORT_0)
+serial_port_1_thread = create_serial_loop_thread(SERIAL_PORT_1)
 
-ems_thread.start()
-efis_thread.start()
+serial_port_0_thread.start()
+serial_port_1_thread.start()
 
 while True:
     time.sleep(1)
