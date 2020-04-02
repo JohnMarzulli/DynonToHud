@@ -1,22 +1,47 @@
 #!/usr/bin/python3
 
 import datetime
+import logging
 import threading
 import time
 
 import serial
+from flask import Flask, json
+
+API_PORT = 8180
 
 SERIAL_PORT_0 = '/dev/ttyUSB0'
 SERIAL_PORT_1 = '/dev/ttyUSB1'
 
 METERS_TO_YARDS = 1.09361
 
+logging.basicConfig(
+    filename='dynon.log',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+__logging_lock__ = threading.Lock()
+
+api = Flask('DynonToHud')
+
+
+def log(
+    text_to_log: str
+):
+    if text_to_log is None:
+        return
+
+    __logging_lock__.acquire()
+    try:
+        logging.info(text_to_log)
+    finally:
+        __logging_lock__.release()
+
 
 class DynonSerialReader(object):
 
     def __init__(
         self,
-        serial_port
+        serial_port: str
     ):
         super().__init__()
 
@@ -30,6 +55,8 @@ class DynonSerialReader(object):
     ):
         try:
             if self.serial_reader is None or not self.serial_reader.is_open():
+                log(f'ATTEMPTING to open connection to {self.serial_port}')
+
                 self.serial_reader = serial.Serial(
                     self.serial_port,
                     baudrate=115200,
@@ -39,8 +66,12 @@ class DynonSerialReader(object):
                     timeout=10)
 
                 self.serial_reader.flushInput()
+
+                log(f'OPENED serial connection to {self.serial_port}')
         except:
             self.serial_reader = None
+            log(
+                f'FAILED attempt to open serial connection to {self.serial_port}')
 
     def read(
         self
@@ -50,7 +81,9 @@ class DynonSerialReader(object):
                 serial_bytes = self.serial_reader.readline()
 
                 if serial_bytes != None and len(serial_bytes) > 0:
-                    return str(serial_bytes, encoding='ascii')
+                    raw_read = str(serial_bytes, encoding='ascii')
+                    log(raw_read)
+                    return raw_read
             else:
                 self.open_serial_connection()
 
@@ -86,8 +119,8 @@ class EfisAndEmsDecoder(object):
 
     def update_gs(
         self,
-        current_vertical_gs,
-        current_lateral_gs
+        current_vertical_gs: float,
+        current_lateral_gs: float
     ):
         if current_vertical_gs < self.min_vertical_gs:
             self.min_vertical_gs = current_vertical_gs
@@ -103,8 +136,8 @@ class EfisAndEmsDecoder(object):
 
     def get_gs_to_report(
         self,
-        current_vertical_gs,
-        current_lateral_gs
+        current_vertical_gs: float,
+        current_lateral_gs: float
     ):
         if abs(current_lateral_gs) > abs(current_vertical_gs):
             return current_lateral_gs
@@ -130,7 +163,7 @@ class EfisAndEmsDecoder(object):
 
     def decode_efis(
         self,
-        serial_data
+        serial_data: str
     ):
         # Example:
         # "21301133-008+00001100000+0024-002-00+1099FC39FE01AC"
@@ -202,7 +235,7 @@ class EfisAndEmsDecoder(object):
 
     def decode_ems(
         self,
-        serial_data
+        serial_data: str
     ):
         # Example:
         # 211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A
@@ -259,12 +292,25 @@ class EfisAndEmsDecoder(object):
 
         return self.ahrs_package
 
+    def get_ahrs_package(
+        self
+    ):
+        """
+        Returns a thread-safe copy of the current AHRS package.
+        """
+
+        self.__lock__.acquire()
+        cloned_package = self.ahrs_package.copy()
+        self.__lock__.release()
+
+        return cloned_package
+
 
 decoder = EfisAndEmsDecoder()
 
 
 def open_dynon_serials_connection(
-    port
+    port: str
 ):
     """
     Attempts to open a serial connection to the Dynon for
@@ -284,7 +330,7 @@ def open_dynon_serials_connection(
 
 
 def read_and_decode_loop(
-    port
+    port: str
 ):
     """
     Starts a USB/Serial reading loop for the given port.
@@ -306,7 +352,7 @@ def read_and_decode_loop(
 
 
 def create_serial_loop_thread(
-    port
+    port: str
 ):
     """
     Create a threading object for looping and reading a
@@ -317,11 +363,15 @@ def create_serial_loop_thread(
         kwargs={"port": port})
 
 
+@api.route('/getSituation', methods=['GET'])
+def get_situation():
+    return json.dumps(decoder.get_ahrs_package())
+
+
 serial_port_0_thread = create_serial_loop_thread(SERIAL_PORT_0)
 serial_port_1_thread = create_serial_loop_thread(SERIAL_PORT_1)
 
 serial_port_0_thread.start()
 serial_port_1_thread.start()
 
-while True:
-    time.sleep(1)
+api.run(port=API_PORT)

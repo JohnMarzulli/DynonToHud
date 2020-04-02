@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-installs = ['pyserial']
+installs = ['pyserial', 'flask']
 
 setup(name='DynonToHud',
       version='0.1',

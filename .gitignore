@@ -1,1 +1,4 @@
 node_modules
+dynon.log
+dynon.log.*
+__pycache__/*
