@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "SerialCopy",
+            "name": "DynonToHud",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/capture_and_log.py",
+            "program": "${workspaceFolder}/dynon_to_hud.py",
             "console": "integratedTerminal"
         },
         {
