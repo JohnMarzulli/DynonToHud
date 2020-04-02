@@ -1,14 +1,17 @@
 #!/usr/bin/python3
 
 import datetime
+import json
 import logging
+import os
+import re
 import threading
 import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import serial
-from flask import Flask, json
 
-API_PORT = 8180
+RESTFUL_HOST_PORT = 8180
 
 SERIAL_PORT_0 = '/dev/ttyUSB0'
 SERIAL_PORT_1 = '/dev/ttyUSB1'
@@ -20,8 +23,6 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 __logging_lock__ = threading.Lock()
-
-api = Flask('DynonToHud')
 
 
 def log(
@@ -299,8 +300,9 @@ class EfisAndEmsDecoder(object):
         Returns a thread-safe copy of the current AHRS package.
         """
 
+        cloned_package = {'Service': 'DynonToHud'}
         self.__lock__.acquire()
-        cloned_package = self.ahrs_package.copy()
+        cloned_package.update(self.ahrs_package)
         self.__lock__.release()
 
         return cloned_package
@@ -363,9 +365,56 @@ def create_serial_loop_thread(
         kwargs={"port": port})
 
 
-@api.route('/getSituation', methods=['GET'])
 def get_situation():
-    return json.dumps(decoder.get_ahrs_package())
+    return json.dumps(
+        decoder.get_ahrs_package(),
+        indent=4,
+        sort_keys=False)
+
+
+class RestfulHost(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        # Send the html message
+        self.wfile.write(get_situation().encode())
+
+
+class HudServer(object):
+    """
+    Class to handle running a REST endpoint to handle configuration.
+    """
+
+    def get_server_ip(self):
+        """
+        Returns the IP address of this REST server.
+
+        Returns:
+            string -- The IP address of this server.
+        """
+
+        return ''
+
+    def run(self):
+        """
+        Starts the server.
+        """
+
+        print("localhost = {}:{}".format(self.__local_ip__, self.__port__))
+
+        self.__httpd__.serve_forever()
+
+    def stop(self):
+        if self.__httpd__ is not None:
+            self.__httpd__.shutdown()
+            self.__httpd__.server_close()
+
+    def __init__(self):
+        self.__port__ = RESTFUL_HOST_PORT
+        self.__local_ip__ = self.get_server_ip()
+        server_address = (self.__local_ip__, self.__port__)
+        self.__httpd__ = HTTPServer(server_address, RestfulHost)
 
 
 serial_port_0_thread = create_serial_loop_thread(SERIAL_PORT_0)
@@ -374,4 +423,5 @@ serial_port_1_thread = create_serial_loop_thread(SERIAL_PORT_1)
 serial_port_0_thread.start()
 serial_port_1_thread.start()
 
-api.run(port=API_PORT)
+host = HudServer()
+host.run()

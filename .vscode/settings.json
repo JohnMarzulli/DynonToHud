@@ -3,6 +3,7 @@
         "AHRS",
         "Baro",
         "Dynon",
-        "efis"
+        "efis",
+        "httpd"
     ]
 }
