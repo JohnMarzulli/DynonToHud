@@ -100,7 +100,15 @@ class EfisAndEmsDecoder(object):
         is_pressure_alt_and_vsi = ((status_bitmask & 1) == 1)
 
         current_time = datetime.datetime.utcnow()
-        last_time_received = f"{current_time.year:04}-{current_time.month:02}-{current_time.day:02}T{hour}:{minute}:{second}.{time_fraction}Z"
+        last_time_received = "{0:04}-{1:02}-{2:02}T{3}:{4}:{5}.{6}Z".format(
+            current_time.year,
+            current_time.month,
+            current_time.day,
+            hour,
+            minute,
+            second,
+            time_fraction
+        )
 
         decoded_efis = {
             "GPSTime": last_time_received,
@@ -219,3 +227,9 @@ class EfisAndEmsDecoder(object):
         self.__lock__.release()
 
         return cloned_package
+
+if __name__ == '__main__':
+    decoder = EfisAndEmsDecoder()
+
+    decoder.decode_efis("21301133-008+00001100000+0024-002-00+1099FC39FE01AC")
+    decoder.decode_ems("211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A")
