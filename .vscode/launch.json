@@ -12,6 +12,13 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "DynonSimulator",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/dynon_simulator.py",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
