@@ -1,9 +1,13 @@
 import datetime
 import threading
 
-METERS_TO_YARDS = 1.09361
-METERS_TO_FEET = 3.28084
-AIRSPEED_CONVERSION_FACTOR = 0.647
+from json_data_cache import JsonDataCache
+
+METERS_TO_YARDS: float = 1.09361
+METERS_TO_FEET: float = 3.28084
+AIRSPEED_CONVERSION_FACTOR: float = 0.647
+MAX_EMS_DATA_AGE_SECONDS: float = 0.5
+MAX_EFIS_DATA_AGE_SECOND: float = 0.25
 
 
 def __get_data_length__(
@@ -39,18 +43,16 @@ class EfisAndEmsDecoder(object):
 
         super().__init__()
 
-        self.efis_last_updated = None
-        self.seconds_since_last_update = 10000
-
-        self.ahrs_package = {}
+        self.__ems_data__: JsonDataCache = JsonDataCache(
+            MAX_EMS_DATA_AGE_SECONDS)
+        self.__efis_data__: JsonDataCache = JsonDataCache(
+            MAX_EFIS_DATA_AGE_SECOND)
 
         self.max_lateral_gs = 1.0
         self.min_lateral_gs = 1.0
 
         self.max_vertical_gs = 1.0
         self.min_vertical_gs = 1.0
-
-        self.__lock__ = threading.Lock()
 
     def update_gs(
         self,
@@ -76,34 +78,10 @@ class EfisAndEmsDecoder(object):
         if current_lateral_gs > self.max_lateral_gs:
             self.max_lateral_gs = current_lateral_gs
 
-    def efis_updated(
-        self
-    ) -> float:
-        """
-        Marks the EFIS data has having been updated.
-
-        Returns:
-            float -- The number of seconds since the last update.
-        """
-
-        seconds_since_update = 0
-        new_update_time = datetime.datetime.utcnow()
-
-        if self.efis_last_updated is None:
-            seconds_since_update = 10000
-        else:
-            seconds_since_update = (
-                new_update_time - self.efis_last_updated).total_seconds()
-
-        self.efis_last_updated = new_update_time
-        self.seconds_since_last_update = seconds_since_update
-
-        return seconds_since_update
-
     def decode_efis(
         self,
         serial_data: str
-    ) -> dict:
+    ):
         """
         Attempts to decode a serial blob as EFIS data.
         If the data is not valid or not EFIS, then
@@ -112,15 +90,12 @@ class EfisAndEmsDecoder(object):
         Arguments:
             serial_data {str} -- The data to attempt to decode as being from the EFIS.
 
-        Returns:
-            dict -- The decoded EFIS package. Returns an empty package if nothing was decoded (invalid data).
-
         Example:
             "21301133-008+00001100000+0024-002-00+1099FC39FE01AC"
         """
 
         if __get_data_length__(serial_data) != 53:
-            return {} if self.seconds_since_last_update > .5 else self.ahrs_package
+            return
 
         hour = serial_data[0:2]
         minute = serial_data[2:4]
@@ -186,13 +161,7 @@ class EfisAndEmsDecoder(object):
             decoded_efis["Altitude"] = altitude * METERS_TO_YARDS
             decoded_efis["AHRSTurnRate"] = turn_rate_or_vsi
 
-        self.__lock__.acquire()
-        self.ahrs_package.update(decoded_efis)
-        self.__lock__.release()
-
-        self.efis_updated()
-
-        return self.ahrs_package
+        self.__efis_data__.update(decoded_efis)
 
     # TODO - Make this return ONLY the new EMS package
     # TODO - Have a manager class that can handle the EMS and EFIS
@@ -201,10 +170,11 @@ class EfisAndEmsDecoder(object):
     #        package that then has the EMS and EFIS data added
     #        as the age of the packages allows. This
     #        will allow the data to timeout.
+
     def decode_ems(
         self,
         serial_data: str
-    ) -> dict:
+    ):
         """
         Attempts to decode a serial blob as EMS data.
         If the data is not valid or not EMS, then
@@ -213,15 +183,12 @@ class EfisAndEmsDecoder(object):
         Arguments:
             serial_data {str} -- The data to attempt to decode as being from the EMS.
 
-        Returns:
-            dict -- The decoded EMS package. Returns an empty package if nothing was decoded (invalid data).
-
         Example:
             "211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A"
         """
 
         if __get_data_length__(serial_data) != 121:
-            return {} if self.seconds_since_last_update > .5 else self.ahrs_package
+            return None
 
         # hour = serial_data[0:2]
         # minute = serial_data[2:4]
@@ -272,11 +239,7 @@ class EfisAndEmsDecoder(object):
             'EmsGp2': gp_2
         }
 
-        self.__lock__.acquire()
-        self.ahrs_package.update(ems_package)
-        self.__lock__.release()
-
-        return self.ahrs_package
+        self.__ems_data__.update(ems_package)
 
     def get_ahrs_package(
         self
@@ -289,9 +252,8 @@ class EfisAndEmsDecoder(object):
         """
 
         cloned_package = {'Service': 'DynonToHud'}
-        self.__lock__.acquire()
-        cloned_package.update(self.ahrs_package)
-        self.__lock__.release()
+        cloned_package.update(self.__ems_data__.get())
+        cloned_package.update(self.__efis_data__.get())
 
         return cloned_package
 
