@@ -29,7 +29,7 @@ class EfisAndEmsDecoder(object):
     def __get_data_length__(
         self,
         serial_data: str
-    ):
+    ) -> int:
         return 0 if serial_data is None else len(serial_data)
 
     def update_gs(
@@ -53,7 +53,7 @@ class EfisAndEmsDecoder(object):
         self,
         current_vertical_gs: float,
         current_lateral_gs: float
-    ):
+    ) -> float:
         if abs(current_lateral_gs) > abs(current_vertical_gs):
             return current_lateral_gs
 
@@ -61,7 +61,7 @@ class EfisAndEmsDecoder(object):
 
     def efis_updated(
         self
-    ):
+    ) -> int:
         seconds_since_update = 0
         new_update_time = datetime.datetime.utcnow()
 
@@ -79,7 +79,7 @@ class EfisAndEmsDecoder(object):
     def decode_efis(
         self,
         serial_data: str
-    ):
+    ) -> dict:
         # Example:
         # "21301133-008+00001100000+0024-002-00+1099FC39FE01AC"
 
@@ -101,7 +101,7 @@ class EfisAndEmsDecoder(object):
         vertical_gs = float(serial_data[36:39]) / 100.0
         # percentage to stall 0 to 99
         angle_of_attack = int(serial_data[39:41])
-        status_bitmask = int(serial_data[41:71], 16)
+        status_bitmask = int(serial_data[41:47], 16)
 
         is_pressure_alt_and_vsi = ((status_bitmask & 1) == 1)
 
@@ -142,10 +142,11 @@ class EfisAndEmsDecoder(object):
         }
 
         if is_pressure_alt_and_vsi:
-            decoded_efis["BaroPressureAltitude"] = altitude
+            decoded_efis["BaroPressureAltitude"] = altitude * METERS_TO_YARDS
             decoded_efis["BaroVerticalSpeed"] = METERS_TO_YARDS * \
                 turn_rate_or_vsi
         else:
+            decoded_efis["Altitude"] = altitude * METERS_TO_YARDS
             decoded_efis["AHRSTurnRate"] = turn_rate_or_vsi
 
         self.__lock__.acquire()
@@ -159,7 +160,7 @@ class EfisAndEmsDecoder(object):
     def decode_ems(
         self,
         serial_data: str
-    ):
+    ) -> dict:
         # Example:
         # 211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A
         if self.__get_data_length__(serial_data) != 121:
@@ -222,7 +223,7 @@ class EfisAndEmsDecoder(object):
 
     def get_ahrs_package(
         self
-    ):
+    ) -> dict:
         """
         Returns a thread-safe copy of the current AHRS package.
         """
@@ -238,6 +239,7 @@ class EfisAndEmsDecoder(object):
 if __name__ == '__main__':
     decoder = EfisAndEmsDecoder()
 
-    decoder.decode_efis("21301133-008+00001100000+0024-002-00+1099FC39FE01AC\r\n")
+    decoder.decode_efis(
+        "21301133-008+00001100000+0024-002-00+1099FC39FE01AC\r\n")
     decoder.decode_ems(
         "211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A\r\n")
