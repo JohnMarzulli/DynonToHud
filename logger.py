@@ -12,6 +12,14 @@ __logging_lock__ = threading.Lock()
 def log(
     text_to_log: str
 ):
+    """
+    Safely logs the given text.
+    All logs go to "INFO" level.
+
+    Arguments:
+        text_to_log {str} -- The text to log.
+    """
+
     if text_to_log is None:
         return
 
