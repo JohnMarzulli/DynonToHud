@@ -1,22 +1,17 @@
 #!/usr/bin/python3
 
-import datetime
-import json
-import os
-import re
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import dynon_decoder
 import dynon_serial_reader
-
-RESTFUL_HOST_PORT = 8180
+import rest_service
 
 SERIAL_PORT_0 = '/dev/ttyUSB0'
 SERIAL_PORT_1 = '/dev/ttyUSB1'
 
 decoder = dynon_decoder.EfisAndEmsDecoder()
+rest_service.ServerDecoderInterface.set_decoder(decoder)
 
 
 def open_dynon_serials_connection(
@@ -73,63 +68,11 @@ def create_serial_loop_thread(
         kwargs={"port": port})
 
 
-def get_situation():
-    return json.dumps(
-        decoder.get_ahrs_package(),
-        indent=4,
-        sort_keys=False)
-
-
-class RestfulHost(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        # Send the html message
-        self.wfile.write(get_situation().encode())
-
-
-class HudServer(object):
-    """
-    Class to handle running a REST endpoint to handle configuration.
-    """
-
-    def get_server_ip(self):
-        """
-        Returns the IP address of this REST server.
-
-        Returns:
-            string -- The IP address of this server.
-        """
-
-        return ''
-
-    def run(self):
-        """
-        Starts the server.
-        """
-
-        print("localhost = {}:{}".format(self.__local_ip__, self.__port__))
-
-        self.__httpd__.serve_forever()
-
-    def stop(self):
-        if self.__httpd__ is not None:
-            self.__httpd__.shutdown()
-            self.__httpd__.server_close()
-
-    def __init__(self):
-        self.__port__ = RESTFUL_HOST_PORT
-        self.__local_ip__ = self.get_server_ip()
-        server_address = (self.__local_ip__, self.__port__)
-        self.__httpd__ = HTTPServer(server_address, RestfulHost)
-
-
 serial_port_0_thread = create_serial_loop_thread(SERIAL_PORT_0)
 serial_port_1_thread = create_serial_loop_thread(SERIAL_PORT_1)
 
 serial_port_0_thread.start()
 serial_port_1_thread.start()
 
-host = HudServer()
+host = rest_service.HudServer()
 host.run()
