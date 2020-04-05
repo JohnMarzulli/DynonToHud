@@ -22,7 +22,8 @@ class DynonSerialReader(object):
         try:
             if self.serial_reader is None:
                 logger.log(
-                    'ATTEMPTING to open connection to {0}'.format(self.serial_port))
+                    'ATTEMPTING to open connection to {0}'.format(
+                        self.serial_port))
 
                 self.serial_reader = serial.Serial(
                     self.serial_port,
@@ -34,8 +35,9 @@ class DynonSerialReader(object):
 
                 self.serial_reader.flushInput()
 
-                logger.log('OPENED serial connection to {0}'.format(
-                    self.serial_port))
+                logger.log(
+                    'OPENED serial connection to {0}'.format(
+                        self.serial_port))
         except:
             self.serial_reader = None
             logger.log(
@@ -43,7 +45,7 @@ class DynonSerialReader(object):
 
     def read(
         self
-    ):
+    ) -> str:
         try:
             if self.serial_reader is not None:
                 serial_bytes = self.serial_reader.readline()
