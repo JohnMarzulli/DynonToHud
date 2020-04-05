@@ -1,22 +1,52 @@
 import datetime
 import threading
 
-METERS_TO_YARDS = 1.09361
+from json_data_cache import JsonDataCache
+
+METERS_TO_YARDS: float = 1.09361
+METERS_TO_FEET: float = 3.28084
+AIRSPEED_CONVERSION_FACTOR: float = 0.647
+MAX_EMS_DATA_AGE_SECONDS: float = 0.5
+MAX_EFIS_DATA_AGE_SECOND: float = 0.25
+
+
+def __get_data_length__(
+    serial_data: str
+) -> int:
+    """
+    Safely returns the length of a data read.
+    Returns 0 if the data is None or empty.
+
+    Arguments:
+        serial_data {str} -- The data we want to safely get the length of.
+
+    Returns:
+        int -- The length of the data.
+    """
+    return 0 if serial_data is None else len(serial_data)
 
 
 class EfisAndEmsDecoder(object):
-    # Based on
-    # https://www.dynonavionics.com/includes/guides/FlightDEK-D180_Pilot's_User_Guide_Rev_H.pdf
+    """
+    Decoder helper to help with reading Dynon serial streams.
+
+    Based on
+    https://www.dynonavionics.com/includes/guides/FlightDEK-D180_Pilot's_User_Guide_Rev_H.pdf
+    """
 
     def __init__(
         self
     ):
+        """
+        Creates a new decoder for Dynon EFIS and EMS data from serial connections.
+        """
+
         super().__init__()
 
-        self.efis_last_updated = None
-        self.seconds_since_last_update = 10000
-
-        self.ahrs_package = {}
+        self.__ems_data__: JsonDataCache = JsonDataCache(
+            MAX_EMS_DATA_AGE_SECONDS)
+        self.__efis_data__: JsonDataCache = JsonDataCache(
+            MAX_EFIS_DATA_AGE_SECOND)
 
         self.max_lateral_gs = 1.0
         self.min_lateral_gs = 1.0
@@ -24,13 +54,18 @@ class EfisAndEmsDecoder(object):
         self.max_vertical_gs = 1.0
         self.min_vertical_gs = 1.0
 
-        self.__lock__ = threading.Lock()
-
     def update_gs(
         self,
         current_vertical_gs: float,
         current_lateral_gs: float
     ):
+        """
+        Updates the maximum and minimum Gs experienced/measured.
+
+        Arguments:
+            current_vertical_gs {float} -- The current vertical Gs
+            current_lateral_gs {float} -- the current horizontal Gs.
+        """
         if current_vertical_gs < self.min_vertical_gs:
             self.min_vertical_gs = current_vertical_gs
 
@@ -43,42 +78,24 @@ class EfisAndEmsDecoder(object):
         if current_lateral_gs > self.max_lateral_gs:
             self.max_lateral_gs = current_lateral_gs
 
-    def get_gs_to_report(
-        self,
-        current_vertical_gs: float,
-        current_lateral_gs: float
-    ):
-        if abs(current_lateral_gs) > abs(current_vertical_gs):
-            return current_lateral_gs
-
-        return current_vertical_gs
-
-    def efis_updated(
-        self
-    ):
-        seconds_since_update = 0
-        new_update_time = datetime.datetime.utcnow()
-
-        if self.efis_last_updated is None:
-            seconds_since_update = 10000
-        else:
-            seconds_since_update = (
-                new_update_time - self.efis_last_updated).seconds
-
-        self.efis_last_updated = new_update_time
-        self.seconds_since_last_update = seconds_since_update
-
-        return seconds_since_update
-
     def decode_efis(
         self,
         serial_data: str
     ):
-        # Example:
-        # "21301133-008+00001100000+0024-002-00+1099FC39FE01AC"
+        """
+        Attempts to decode a serial blob as EFIS data.
+        If the data is not valid or not EFIS, then
+        nothing is done.
 
-        if serial_data is None or len(serial_data) != 51:
-            return {} if self.seconds_since_last_update > .5 else self.ahrs_package
+        Arguments:
+            serial_data {str} -- The data to attempt to decode as being from the EFIS.
+
+        Example:
+            "21301133-008+00001100000+0024-002-00+1099FC39FE01AC"
+        """
+
+        if __get_data_length__(serial_data) != 53:
+            return
 
         hour = serial_data[0:2]
         minute = serial_data[2:4]
@@ -87,15 +104,16 @@ class EfisAndEmsDecoder(object):
         pitch = float(serial_data[8:12]) / 10.0
         roll = float(serial_data[12:17]) / 10.0
         yaw = int(serial_data[17:20])
-        airspeed = METERS_TO_YARDS * (float(serial_data[20:24]) / 10.0)
+        ias_meters_per_second = (float(serial_data[20:24]) / 10.0)
+        airspeed = ias_meters_per_second * AIRSPEED_CONVERSION_FACTOR
         # pres or displayed
-        altitude = METERS_TO_YARDS * float(serial_data[24:29])
+        altitude = METERS_TO_FEET * float(serial_data[24:29])
         turn_rate_or_vsi = float(serial_data[29:33]) / 10.0
         # lateral_gs = float(serial_data[33:36]) / 100.0
-        vertical_gs = float(serial_data[36:39]) / 100.0
+        vertical_gs = float(serial_data[36:39]) / 10.0
         # percentage to stall 0 to 99
         angle_of_attack = int(serial_data[39:41])
-        status_bitmask = int(serial_data[41:71], 16)
+        status_bitmask = int(serial_data[41:47], 16)
 
         is_pressure_alt_and_vsi = ((status_bitmask & 1) == 1)
 
@@ -136,28 +154,41 @@ class EfisAndEmsDecoder(object):
         }
 
         if is_pressure_alt_and_vsi:
-            decoded_efis["BaroPressureAltitude"] = altitude
+            decoded_efis["BaroPressureAltitude"] = altitude * METERS_TO_YARDS
             decoded_efis["BaroVerticalSpeed"] = METERS_TO_YARDS * \
                 turn_rate_or_vsi
         else:
+            decoded_efis["Altitude"] = altitude * METERS_TO_YARDS
             decoded_efis["AHRSTurnRate"] = turn_rate_or_vsi
 
-        self.__lock__.acquire()
-        self.ahrs_package.update(decoded_efis)
-        self.__lock__.release()
+        self.__efis_data__.update(decoded_efis)
 
-        self.efis_updated()
-
-        return self.ahrs_package
+    # TODO - Make this return ONLY the new EMS package
+    # TODO - Have a manager class that can handle the EMS and EFIS
+    #        packages along with handling the update timestamps
+    # TODO - Have the get_ahrs function start with an empty
+    #        package that then has the EMS and EFIS data added
+    #        as the age of the packages allows. This
+    #        will allow the data to timeout.
 
     def decode_ems(
         self,
         serial_data: str
     ):
-        # Example:
-        # 211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A
-        if serial_data is None or len(serial_data) != 119:
-            return {} if self.seconds_since_last_update > .5 else self.ahrs_package
+        """
+        Attempts to decode a serial blob as EMS data.
+        If the data is not valid or not EMS, then
+        nothing is done.
+
+        Arguments:
+            serial_data {str} -- The data to attempt to decode as being from the EMS.
+
+        Example:
+            "211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A"
+        """
+
+        if __get_data_length__(serial_data) != 121:
+            return None
 
         # hour = serial_data[0:2]
         # minute = serial_data[2:4]
@@ -169,7 +200,7 @@ class EfisAndEmsDecoder(object):
         fuel_pressure = float(serial_data[18:21]) / 10.0
         volts = float(serial_data[21:24]) / 10.0
         amps = serial_data[24:27]
-        rpm = float(serial_data[27:30]) / 10.0
+        rpm = float(serial_data[27:30]) * 10.0
         # fuel_flow = float(serial_data[30:33]) / 10.0
         # gallons_remaining = float(serial_data[33:37]) / 10.0
         fuel_level_1 = float(serial_data[37:40]) / 10.0
@@ -208,28 +239,29 @@ class EfisAndEmsDecoder(object):
             'EmsGp2': gp_2
         }
 
-        self.__lock__.acquire()
-        self.ahrs_package.update(ems_package)
-        self.__lock__.release()
-
-        return self.ahrs_package
+        self.__ems_data__.update(ems_package)
 
     def get_ahrs_package(
         self
-    ):
+    ) -> dict:
         """
         Returns a thread-safe copy of the current AHRS package.
+
+        Returns:
+            dict -- The package to return to the HUD client as being from the AHRS.
         """
 
         cloned_package = {'Service': 'DynonToHud'}
-        self.__lock__.acquire()
-        cloned_package.update(self.ahrs_package)
-        self.__lock__.release()
+        cloned_package.update(self.__ems_data__.get())
+        cloned_package.update(self.__efis_data__.get())
 
         return cloned_package
+
 
 if __name__ == '__main__':
     decoder = EfisAndEmsDecoder()
 
-    decoder.decode_efis("21301133-008+00001100000+0024-002-00+1099FC39FE01AC")
-    decoder.decode_ems("211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A")
+    decoder.decode_efis(
+        "21301133-008+00001100000+0024-002-00+1099FC39FE01AC\r\n")
+    decoder.decode_ems(
+        "211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A\r\n")
