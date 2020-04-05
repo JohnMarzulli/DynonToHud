@@ -16,10 +16,16 @@ rest_service.ServerDecoderInterface.set_decoder(decoder)
 
 def open_dynon_serials_connection(
     port: str
-):
+) -> dynon_serial_reader.DynonSerialReader:
     """
     Attempts to open a serial connection to the Dynon for
     the given port.
+
+    Arguments:
+        port {str} -- The path to the serial device to read from.
+
+    Returns:
+        dynon_serial_reader.DynonSerialReader -- The new reader for the serial port.
     """
 
     serial_connection = None
@@ -42,6 +48,9 @@ def read_and_decode_loop(
     Attempts to decode the raw feed as both EFIS and EMS
     since both types are regular in length and
     can be determined.
+
+    Arguments:
+        port {str} -- The path to the serial device to read from.
     """
 
     while True:
@@ -58,11 +67,18 @@ def read_and_decode_loop(
 
 def create_serial_loop_thread(
     port: str
-):
+) -> threading.Thread:
     """
     Create a threading object for looping and reading a
     serial port off the Dynon.
+
+    Arguments:
+        port {str} -- The path to the serial device to read from.
+
+    Returns:
+        threading.Thread -- The thread responsible for reading the serial port.
     """
+
     return threading.Thread(
         target=read_and_decode_loop,
         kwargs={"port": port})
