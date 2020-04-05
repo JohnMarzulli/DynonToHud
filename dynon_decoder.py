@@ -2,15 +2,41 @@ import datetime
 import threading
 
 METERS_TO_YARDS = 1.09361
+METERS_TO_FEET = 3.28084
 AIRSPEED_CONVERSION_FACTOR = 0.647
 
+
+def __get_data_length__(
+    serial_data: str
+) -> int:
+    """
+    Safely returns the length of a data read.
+    Returns 0 if the data is None or empty.
+
+    Arguments:
+        serial_data {str} -- The data we want to safely get the length of.
+
+    Returns:
+        int -- The length of the data.
+    """
+    return 0 if serial_data is None else len(serial_data)
+
+
 class EfisAndEmsDecoder(object):
-    # Based on
-    # https://www.dynonavionics.com/includes/guides/FlightDEK-D180_Pilot's_User_Guide_Rev_H.pdf
+    """
+    Decoder helper to help with reading Dynon serial streams.
+
+    Based on
+    https://www.dynonavionics.com/includes/guides/FlightDEK-D180_Pilot's_User_Guide_Rev_H.pdf
+    """
 
     def __init__(
         self
     ):
+        """
+        Creates a new decoder for Dynon EFIS and EMS data from serial connections.
+        """
+
         super().__init__()
 
         self.efis_last_updated = None
@@ -26,17 +52,18 @@ class EfisAndEmsDecoder(object):
 
         self.__lock__ = threading.Lock()
 
-    def __get_data_length__(
-        self,
-        serial_data: str
-    ) -> int:
-        return 0 if serial_data is None else len(serial_data)
-
     def update_gs(
         self,
         current_vertical_gs: float,
         current_lateral_gs: float
     ):
+        """
+        Updates the maximum and minimum Gs experienced/measured.
+
+        Arguments:
+            current_vertical_gs {float} -- The current vertical Gs
+            current_lateral_gs {float} -- the current horizontal Gs.
+        """
         if current_vertical_gs < self.min_vertical_gs:
             self.min_vertical_gs = current_vertical_gs
 
@@ -49,19 +76,16 @@ class EfisAndEmsDecoder(object):
         if current_lateral_gs > self.max_lateral_gs:
             self.max_lateral_gs = current_lateral_gs
 
-    def get_gs_to_report(
-        self,
-        current_vertical_gs: float,
-        current_lateral_gs: float
-    ) -> float:
-        if abs(current_lateral_gs) > abs(current_vertical_gs):
-            return current_lateral_gs
-
-        return current_vertical_gs
-
     def efis_updated(
         self
-    ) -> int:
+    ) -> float:
+        """
+        Marks the EFIS data has having been updated.
+
+        Returns:
+            float -- The number of seconds since the last update.
+        """
+
         seconds_since_update = 0
         new_update_time = datetime.datetime.utcnow()
 
@@ -69,7 +93,7 @@ class EfisAndEmsDecoder(object):
             seconds_since_update = 10000
         else:
             seconds_since_update = (
-                new_update_time - self.efis_last_updated).seconds
+                new_update_time - self.efis_last_updated).total_seconds()
 
         self.efis_last_updated = new_update_time
         self.seconds_since_last_update = seconds_since_update
@@ -80,10 +104,22 @@ class EfisAndEmsDecoder(object):
         self,
         serial_data: str
     ) -> dict:
-        # Example:
-        # "21301133-008+00001100000+0024-002-00+1099FC39FE01AC"
+        """
+        Attempts to decode a serial blob as EFIS data.
+        If the data is not valid or not EFIS, then
+        nothing is done.
 
-        if self.__get_data_length__(serial_data) != 53:
+        Arguments:
+            serial_data {str} -- The data to attempt to decode as being from the EFIS.
+
+        Returns:
+            dict -- The decoded EFIS package. Returns an empty package if nothing was decoded (invalid data).
+
+        Example:
+            "21301133-008+00001100000+0024-002-00+1099FC39FE01AC"
+        """
+
+        if __get_data_length__(serial_data) != 53:
             return {} if self.seconds_since_last_update > .5 else self.ahrs_package
 
         hour = serial_data[0:2]
@@ -96,7 +132,7 @@ class EfisAndEmsDecoder(object):
         ias_meters_per_second = (float(serial_data[20:24]) / 10.0)
         airspeed = ias_meters_per_second * AIRSPEED_CONVERSION_FACTOR
         # pres or displayed
-        altitude = METERS_TO_YARDS * float(serial_data[24:29])
+        altitude = METERS_TO_FEET * float(serial_data[24:29])
         turn_rate_or_vsi = float(serial_data[29:33]) / 10.0
         # lateral_gs = float(serial_data[33:36]) / 100.0
         vertical_gs = float(serial_data[36:39]) / 10.0
@@ -158,13 +194,33 @@ class EfisAndEmsDecoder(object):
 
         return self.ahrs_package
 
+    # TODO - Make this return ONLY the new EMS package
+    # TODO - Have a manager class that can handle the EMS and EFIS
+    #        packages along with handling the update timestamps
+    # TODO - Have the get_ahrs function start with an empty
+    #        package that then has the EMS and EFIS data added
+    #        as the age of the packages allows. This
+    #        will allow the data to timeout.
     def decode_ems(
         self,
         serial_data: str
     ) -> dict:
-        # Example:
-        # 211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A
-        if self.__get_data_length__(serial_data) != 121:
+        """
+        Attempts to decode a serial blob as EMS data.
+        If the data is not valid or not EMS, then
+        nothing is done.
+
+        Arguments:
+            serial_data {str} -- The data to attempt to decode as being from the EMS.
+
+        Returns:
+            dict -- The decoded EMS package. Returns an empty package if nothing was decoded (invalid data).
+
+        Example:
+            "211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A"
+        """
+
+        if __get_data_length__(serial_data) != 121:
             return {} if self.seconds_since_last_update > .5 else self.ahrs_package
 
         # hour = serial_data[0:2]
@@ -227,6 +283,9 @@ class EfisAndEmsDecoder(object):
     ) -> dict:
         """
         Returns a thread-safe copy of the current AHRS package.
+
+        Returns:
+            dict -- The package to return to the HUD client as being from the AHRS.
         """
 
         cloned_package = {'Service': 'DynonToHud'}
