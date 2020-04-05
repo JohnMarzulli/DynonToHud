@@ -42,7 +42,9 @@ class HudServer(object):
     Class to handle running a REST endpoint to handle configuration.
     """
 
-    def get_server_ip(self):
+    def get_server_ip(
+        self
+    ):
         """
         Returns the IP address of this REST server.
 
