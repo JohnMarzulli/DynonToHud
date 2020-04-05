@@ -2,7 +2,7 @@ import datetime
 import threading
 
 METERS_TO_YARDS = 1.09361
-
+AIRSPEED_CONVERSION_FACTOR = 0.647
 
 class EfisAndEmsDecoder(object):
     # Based on
@@ -93,12 +93,13 @@ class EfisAndEmsDecoder(object):
         pitch = float(serial_data[8:12]) / 10.0
         roll = float(serial_data[12:17]) / 10.0
         yaw = int(serial_data[17:20])
-        airspeed = METERS_TO_YARDS * (float(serial_data[20:24]) / 10.0)
+        ias_meters_per_second = (float(serial_data[20:24]) / 10.0)
+        airspeed = ias_meters_per_second * AIRSPEED_CONVERSION_FACTOR
         # pres or displayed
         altitude = METERS_TO_YARDS * float(serial_data[24:29])
         turn_rate_or_vsi = float(serial_data[29:33]) / 10.0
         # lateral_gs = float(serial_data[33:36]) / 100.0
-        vertical_gs = float(serial_data[36:39]) / 100.0
+        vertical_gs = float(serial_data[36:39]) / 10.0
         # percentage to stall 0 to 99
         angle_of_attack = int(serial_data[39:41])
         status_bitmask = int(serial_data[41:47], 16)
@@ -176,7 +177,7 @@ class EfisAndEmsDecoder(object):
         fuel_pressure = float(serial_data[18:21]) / 10.0
         volts = float(serial_data[21:24]) / 10.0
         amps = serial_data[24:27]
-        rpm = float(serial_data[27:30]) / 10.0
+        rpm = float(serial_data[27:30]) * 10.0
         # fuel_flow = float(serial_data[30:33]) / 10.0
         # gallons_remaining = float(serial_data[33:37]) / 10.0
         fuel_level_1 = float(serial_data[37:40]) / 10.0
