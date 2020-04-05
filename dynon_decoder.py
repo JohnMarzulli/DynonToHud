@@ -26,6 +26,12 @@ class EfisAndEmsDecoder(object):
 
         self.__lock__ = threading.Lock()
 
+    def __get_data_length__(
+        self,
+        serial_data: str
+    ):
+        return 0 if serial_data is None else len(serial_data)
+
     def update_gs(
         self,
         current_vertical_gs: float,
@@ -77,7 +83,7 @@ class EfisAndEmsDecoder(object):
         # Example:
         # "21301133-008+00001100000+0024-002-00+1099FC39FE01AC"
 
-        if serial_data is None or len(serial_data) != 51:
+        if self.__get_data_length__(serial_data) != 53:
             return {} if self.seconds_since_last_update > .5 else self.ahrs_package
 
         hour = serial_data[0:2]
@@ -156,7 +162,7 @@ class EfisAndEmsDecoder(object):
     ):
         # Example:
         # 211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A
-        if serial_data is None or len(serial_data) != 119:
+        if self.__get_data_length__(serial_data) != 121:
             return {} if self.seconds_since_last_update > .5 else self.ahrs_package
 
         # hour = serial_data[0:2]
@@ -228,8 +234,10 @@ class EfisAndEmsDecoder(object):
 
         return cloned_package
 
+
 if __name__ == '__main__':
     decoder = EfisAndEmsDecoder()
 
-    decoder.decode_efis("21301133-008+00001100000+0024-002-00+1099FC39FE01AC")
-    decoder.decode_ems("211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A")
+    decoder.decode_efis("21301133-008+00001100000+0024-002-00+1099FC39FE01AC\r\n")
+    decoder.decode_ems(
+        "211316033190079023001119-020000000000066059CHT00092CHT00090N/AXXXXX099900840084058705270690116109209047124022135111036A\r\n")
