@@ -1,11 +1,5 @@
 # DynonToHud
 
-Project to take the serial output of a Dynon and make it available as a GDL-90 type service.
-
-sudo python3 setup.py develop pip3 install pyserial
-
-# DynonToHud
-
 ## 1\. []()Introduction
 
 This project aims to bring serial data from older Dynon avionics into HUDs and EFBs.
