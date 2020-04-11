@@ -12,8 +12,8 @@ import rest_service
 decoder = dynon_decoder.EfisAndEmsDecoder()
 rest_service.ServerDecoderInterface.set_decoder(decoder)
 
-VALID_EFIS_DATA_LENGTH: int = 51
-VALID_EMS_DATA_LENGTH: int = 119
+VALID_EFIS_DATA_LENGTH = 51
+VALID_EMS_DATA_LENGTH = 119
 
 
 class Port(Enum):
