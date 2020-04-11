@@ -3,11 +3,11 @@ import threading
 
 from json_data_cache import JsonDataCache
 
-METERS_TO_YARDS: float = 1.09361
-METERS_TO_FEET: float = 3.28084
-AIRSPEED_CONVERSION_FACTOR: float = 0.647
-MAX_EMS_DATA_AGE_SECONDS: float = 0.5
-MAX_EFIS_DATA_AGE_SECOND: float = 0.25
+METERS_TO_YARDS = 1.09361
+METERS_TO_FEET = 3.28084
+AIRSPEED_CONVERSION_FACTOR = 0.647
+MAX_EMS_DATA_AGE_SECONDS = 0.5
+MAX_EFIS_DATA_AGE_SECOND = 0.25
 
 
 def __get_data_length__(
@@ -43,10 +43,8 @@ class EfisAndEmsDecoder(object):
 
         super().__init__()
 
-        self.__ems_data__: JsonDataCache = JsonDataCache(
-            MAX_EMS_DATA_AGE_SECONDS)
-        self.__efis_data__: JsonDataCache = JsonDataCache(
-            MAX_EFIS_DATA_AGE_SECOND)
+        self.__ems_data__ = JsonDataCache(MAX_EMS_DATA_AGE_SECONDS)
+        self.__efis_data__ = JsonDataCache(MAX_EFIS_DATA_AGE_SECOND)
 
         self.max_lateral_gs = 1.0
         self.min_lateral_gs = 1.0

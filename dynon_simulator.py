@@ -44,13 +44,12 @@ class SimulatedDataStream(object):
             playback_offset {float} -- How far forward in the stream will the simulator start. Example: 20 will skip ahead 20 minutes. (default: {0})
         """
 
-        offset: datetime.timedelta = datetime.timedelta(
+        offset = datetime.timedelta(
             minutes=playback_offset)
-        self.__index__: int = 0
+        self.__index__ = 0
         self.__data_stream__ = []
-        self.__start_time__: datetime.datetime = (
-            datetime.datetime.utcnow() - offset)
-        self.__current_offset__: datetime.timedelta = datetime.timedelta(0)
+        self.__start_time__ = (datetime.datetime.utcnow() - offset)
+        self.__current_offset__ = datetime.timedelta(0)
 
     def add(
         self,
@@ -85,10 +84,10 @@ class SimulatedDataStream(object):
         # 4 - if we move past the end of the data, return None
 
         max_offset = datetime.datetime.utcnow() - self.__start_time__
-        length: int = len(self.__data_stream__)
+        length = len(self.__data_stream__)
 
         while self.__index__ < length:
-            offset: datetime.timedelta = self.__data_stream__[
+            offset = self.__data_stream__[
                 self.__index__][0]
 
             time_to_sleep = offset.total_seconds() - max_offset.total_seconds()
@@ -297,10 +296,8 @@ class DynonSimulator(object):
             playback_offset {float} -- How far into the playback file to start. In terms of minutes. (default: {0})
         """
         self.__start_time__ = None
-        self.__ems__: SimulatedDataStream = SimulatedDataStream(
-            playback_offset)
-        self.__efis__: SimulatedDataStream = SimulatedDataStream(
-            playback_offset)
+        self.__ems__ = SimulatedDataStream(playback_offset)
+        self.__efis__ = SimulatedDataStream(playback_offset)
         self.__parse_playback_file__(data_file)
 
 

@@ -20,10 +20,10 @@ class JsonDataCache(object):
             max_age_seconds {float} -- The number of seconds that the data is considered old and invalid if an update has not happened.
         """
 
-        self.__max_age_seconds__: float = max_age_seconds
-        self.__lock_object__: threading.Lock = threading.Lock()
-        self.__last_updated__: datetime.datetime = None
-        self.__json_package__: dict = {}
+        self.__max_age_seconds__ = max_age_seconds
+        self.__lock_object__ = threading.Lock()
+        self.__last_updated__ = None
+        self.__json_package__ = {}
 
     def update(
         self,
@@ -67,7 +67,7 @@ class JsonDataCache(object):
             if self.__last_updated__ is None:
                 return {}
 
-            time_since: datetime.timedelta = datetime.datetime.utcnow() - self.__last_updated__
+            time_since = datetime.datetime.utcnow() - self.__last_updated__
             if time_since.total_seconds() < self.__max_age_seconds__:
                 return self.__json_package__.copy()
         finally:
