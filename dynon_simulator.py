@@ -322,6 +322,8 @@ def read_and_decode_loop(
 
             decoder.decode_efis(serial_data)
             decoder.decode_ems(serial_data)
+
+            decoder.garbage_collect()
         except Exception as ex:
             print("EX={}".format(ex))
 
