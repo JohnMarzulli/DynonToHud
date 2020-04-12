@@ -161,14 +161,6 @@ class EfisAndEmsDecoder(object):
 
         self.__efis_data__.update(decoded_efis)
 
-    # TODO - Make this return ONLY the new EMS package
-    # TODO - Have a manager class that can handle the EMS and EFIS
-    #        packages along with handling the update timestamps
-    # TODO - Have the get_ahrs function start with an empty
-    #        package that then has the EMS and EFIS data added
-    #        as the age of the packages allows. This
-    #        will allow the data to timeout.
-
     def decode_ems(
         self,
         serial_data: str
@@ -254,6 +246,15 @@ class EfisAndEmsDecoder(object):
         cloned_package.update(self.__efis_data__.get())
 
         return cloned_package
+
+    def garbage_collect(
+        self
+    ):
+        """
+        Make sure that old data is discarded.
+        """
+        self.__efis_data__.garbage_collect()
+        self.__ems_data__.garbage_collect()
 
 
 if __name__ == '__main__':
