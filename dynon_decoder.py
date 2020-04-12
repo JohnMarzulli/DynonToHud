@@ -242,8 +242,11 @@ class EfisAndEmsDecoder(object):
         """
 
         cloned_package = {'Service': 'DynonToHud'}
-        cloned_package.update(self.__ems_data__.get())
-        cloned_package.update(self.__efis_data__.get())
+        ems_package = self.__ems_data__.get() if self.__ems_data__.is_available() else {}
+        efis_package = self.__efis_data__.get() if self.__efis_data__.is_available() else {}
+
+        cloned_package.update(ems_package)
+        cloned_package.update(efis_package)
 
         return cloned_package
 
