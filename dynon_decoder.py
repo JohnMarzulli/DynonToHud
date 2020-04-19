@@ -152,11 +152,11 @@ class EfisAndEmsDecoder(object):
         }
 
         if is_pressure_alt_and_vsi:
-            decoded_efis["BaroPressureAltitude"] = altitude * METERS_TO_YARDS
+            decoded_efis["BaroPressureAltitude"] = altitude
             decoded_efis["BaroVerticalSpeed"] = METERS_TO_YARDS * \
                 turn_rate_or_vsi
         else:
-            decoded_efis["Altitude"] = altitude * METERS_TO_YARDS
+            decoded_efis["Altitude"] = altitude
             decoded_efis["AHRSTurnRate"] = turn_rate_or_vsi
 
         self.__efis_data__.update(decoded_efis)
