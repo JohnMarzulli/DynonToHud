@@ -71,7 +71,8 @@ Then plug the two USB ends into the StratuxHud
 
 Date       | Version | Major Changes
 ---------- | ------- | ----------------
-2020-03-?? | Alpha   | Initial release.
+2020-04-20 | v1.0    | Release with StratuxHud V1.7
+2020-03-21 | Alpha   | Initial release.
 
 ## 8\. []()Acknowledgements And Credits
 
