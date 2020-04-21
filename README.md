@@ -4,7 +4,7 @@
 
 This project aims to bring serial data from older Dynon avionics into HUDs and EFBs.
 
-It does this be creating a service that supplies the data in a format based on the Stratux projects `getSituation` format.
+It does this by creating a service that supplies the data in a format based on the Stratux projects `getSituation` format.
 
 **NOTE:** This project has only been tested against a Dynon D180 FlightDek. It is likely to work with other EFIS products made by Dynon with a serial output.
 

@@ -3,11 +3,11 @@ import threading
 
 from json_data_cache import JsonDataCache
 
-METERS_TO_YARDS: float = 1.09361
-METERS_TO_FEET: float = 3.28084
-AIRSPEED_CONVERSION_FACTOR: float = 0.647
-MAX_EMS_DATA_AGE_SECONDS: float = 0.5
-MAX_EFIS_DATA_AGE_SECOND: float = 0.25
+METERS_TO_YARDS = 1.09361
+METERS_TO_FEET = 3.28084
+AIRSPEED_CONVERSION_FACTOR = 0.647
+MAX_EMS_DATA_AGE_SECONDS = 0.5
+MAX_EFIS_DATA_AGE_SECOND = 0.25
 
 
 def __get_data_length__(
@@ -43,10 +43,8 @@ class EfisAndEmsDecoder(object):
 
         super().__init__()
 
-        self.__ems_data__: JsonDataCache = JsonDataCache(
-            MAX_EMS_DATA_AGE_SECONDS)
-        self.__efis_data__: JsonDataCache = JsonDataCache(
-            MAX_EFIS_DATA_AGE_SECOND)
+        self.__ems_data__ = JsonDataCache(MAX_EMS_DATA_AGE_SECONDS)
+        self.__efis_data__ = JsonDataCache(MAX_EFIS_DATA_AGE_SECOND)
 
         self.max_lateral_gs = 1.0
         self.min_lateral_gs = 1.0
@@ -154,22 +152,14 @@ class EfisAndEmsDecoder(object):
         }
 
         if is_pressure_alt_and_vsi:
-            decoded_efis["BaroPressureAltitude"] = altitude * METERS_TO_YARDS
+            decoded_efis["BaroPressureAltitude"] = altitude
             decoded_efis["BaroVerticalSpeed"] = METERS_TO_YARDS * \
                 turn_rate_or_vsi
         else:
-            decoded_efis["Altitude"] = altitude * METERS_TO_YARDS
+            decoded_efis["Altitude"] = altitude
             decoded_efis["AHRSTurnRate"] = turn_rate_or_vsi
 
         self.__efis_data__.update(decoded_efis)
-
-    # TODO - Make this return ONLY the new EMS package
-    # TODO - Have a manager class that can handle the EMS and EFIS
-    #        packages along with handling the update timestamps
-    # TODO - Have the get_ahrs function start with an empty
-    #        package that then has the EMS and EFIS data added
-    #        as the age of the packages allows. This
-    #        will allow the data to timeout.
 
     def decode_ems(
         self,
@@ -252,10 +242,22 @@ class EfisAndEmsDecoder(object):
         """
 
         cloned_package = {'Service': 'DynonToHud'}
-        cloned_package.update(self.__ems_data__.get())
-        cloned_package.update(self.__efis_data__.get())
+        ems_package = self.__ems_data__.get() if self.__ems_data__.is_available() else {}
+        efis_package = self.__efis_data__.get() if self.__efis_data__.is_available() else {}
+
+        cloned_package.update(ems_package)
+        cloned_package.update(efis_package)
 
         return cloned_package
+
+    def garbage_collect(
+        self
+    ):
+        """
+        Make sure that old data is discarded.
+        """
+        self.__efis_data__.garbage_collect()
+        self.__ems_data__.garbage_collect()
 
 
 if __name__ == '__main__':

@@ -61,6 +61,7 @@ def read_and_decode_loop(
                 raw_feed = serial_connection.read()
                 decoder.decode_efis(raw_feed)
                 decoder.decode_ems(raw_feed)
+                decoder.garbage_collect()
         finally:
             time.sleep(1)
 

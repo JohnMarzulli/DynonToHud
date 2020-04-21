@@ -20,10 +20,42 @@ class JsonDataCache(object):
             max_age_seconds {float} -- The number of seconds that the data is considered old and invalid if an update has not happened.
         """
 
-        self.__max_age_seconds__: float = max_age_seconds
-        self.__lock_object__: threading.Lock = threading.Lock()
-        self.__last_updated__: datetime.datetime = None
-        self.__json_package__: dict = {}
+        self.__max_age_seconds__ = max_age_seconds
+        self.__lock_object__ = threading.Lock()
+        self.__last_updated__ = None
+        self.__json_package__ = {}
+
+    def __get_data_age__(
+        self
+    ) -> float:
+        """
+        Returns the age of the data in seconds.
+        INTENDED TO BE CALLED FROM INSIDE A LOCK.
+        DOES NOT PERFORM ITS OWN LOCK.
+
+        Returns:
+            float -- The age of the data in seconds.
+        """
+        return (self.__max_age_seconds__ * 1000.0) if self.__json_package__ is None or self.__last_updated__ is None \
+            else (datetime.datetime.utcnow() - self.__last_updated__).total_seconds()
+
+    def garbage_collect(
+        self
+    ):
+        """
+        Go through the old data and make sure that it is removed if it is too old.
+        This prevents a scenario where contact is lost with a service, and then
+        an incomplete package keeps old data dangerously present.
+        """
+        self.__lock_object__.acquire()
+
+        try:
+            data_age = self.__get_data_age__()
+
+            if data_age > self.__max_age_seconds__:
+                self.__json_package__ = {}
+        finally:
+            self.__lock_object__.release()
 
     def update(
         self,
@@ -48,6 +80,33 @@ class JsonDataCache(object):
         finally:
             self.__lock_object__.release()
 
+    def is_available(
+        self
+    ) -> bool:
+        try:
+            self.__lock_object__.acquire()
+
+            data_age = self.__get_data_age__()
+            return data_age < self.__max_age_seconds__
+        finally:
+            self.__lock_object__.release()
+
+    def get_item_count(
+        self
+    ) -> int:
+        """
+        Get how many items (key count) are in the package, regardless of age.
+
+        Returns:
+            int -- The number of keys in the package.
+        """
+        try:
+            self.__lock_object__.acquire()
+
+            return len(self.__json_package__)
+        finally:
+            self.__lock_object__.release()
+
     def get(
         self
     ) -> dict:
@@ -67,7 +126,7 @@ class JsonDataCache(object):
             if self.__last_updated__ is None:
                 return {}
 
-            time_since: datetime.timedelta = datetime.datetime.utcnow() - self.__last_updated__
+            time_since = datetime.datetime.utcnow() - self.__last_updated__
             if time_since.total_seconds() < self.__max_age_seconds__:
                 return self.__json_package__.copy()
         finally:
