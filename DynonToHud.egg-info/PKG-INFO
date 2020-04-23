@@ -1,6 +1,6 @@
 Metadata-Version: 1.2
 Name: DynonToHud
-Version: 0.1
+Version: 1.0.0
 Summary: Service to convert serial output to GDL-90 usable by StratuxHud
 Home-page: https://github.com/JohnMarzulli/DynonToHud
 Author: John Marzulli
