@@ -5,7 +5,7 @@ from setuptools import setup
 installs = ['pyserial']
 
 setup(name='DynonToHud',
-      version='0.1',
+      version='1.0.0',
       python_requires='>=3.5',
       description='Service to convert serial output to GDL-90 usable by StratuxHud',
       author='John Marzulli',
