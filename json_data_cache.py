@@ -91,6 +91,8 @@ class JsonDataCache(object):
         finally:
             self.__lock_object__.release()
 
+        return False
+
     def get_item_count(
         self
     ) -> int:
@@ -106,6 +108,8 @@ class JsonDataCache(object):
             return len(self.__json_package__)
         finally:
             self.__lock_object__.release()
+
+        return 0
 
     def get(
         self
