@@ -1,5 +1,4 @@
 import datetime
-import threading
 
 from json_data_cache import JsonDataCache
 

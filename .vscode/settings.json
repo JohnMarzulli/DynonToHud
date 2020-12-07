@@ -6,5 +6,6 @@
         "Stratux",
         "efis",
         "httpd"
-    ]
+    ],
+    "python.pythonPath": "C:\\Users\\John Marzulli\\AppData\\Local\\Programs\\Python\\Python38\\python.exe"
 }
