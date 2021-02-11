@@ -106,7 +106,7 @@ class EfisAndEmsDecoder(object):
         # pres or displayed
         altitude = METERS_TO_FEET * float(serial_data[24:29])
         turn_rate_or_vsi = float(serial_data[29:33]) / 10.0
-        # lateral_gs = float(serial_data[33:36]) / 100.0
+        lateral_gs = float(serial_data[33:36]) / 100.0
         vertical_gs = float(serial_data[36:39]) / 10.0
         # percentage to stall 0 to 99
         angle_of_attack = int(serial_data[39:41])
@@ -147,7 +147,8 @@ class EfisAndEmsDecoder(object):
             "AHRSLastAttitudeTime": last_time_received,
             "AHRSAirspeed": airspeed,
             "AHRSAOA": angle_of_attack,
-            "AHRSStatus": 7
+            "AHRSStatus": 7,
+            "AHRSSlipSkid": lateral_gs
         }
 
         if is_pressure_alt_and_vsi:
