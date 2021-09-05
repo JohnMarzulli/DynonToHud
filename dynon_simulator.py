@@ -6,7 +6,6 @@ import time
 from enum import Enum
 
 import dynon_decoder
-import dynon_serial_reader
 import rest_service
 
 decoder = dynon_decoder.EfisAndEmsDecoder()
