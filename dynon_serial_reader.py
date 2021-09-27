@@ -4,6 +4,8 @@ import logger
 
 
 class DynonSerialReader(object):
+    READ_TIMEOUT_SECONDS = 0.5
+
     """
     Helper to read data from a Dynon serial connection.
     """
@@ -44,7 +46,7 @@ class DynonSerialReader(object):
                     parity=serial.PARITY_NONE,
                     stopbits=serial.STOPBITS_ONE,
                     bytesize=serial.EIGHTBITS,
-                    timeout=10)
+                    timeout=DynonSerialReader.READ_TIMEOUT_SECONDS)
 
                 self.serial_reader.flushInput()
 
