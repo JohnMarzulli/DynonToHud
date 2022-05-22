@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta, timezone
+from time import timezone
+
 import serial
 
 import logger
@@ -22,8 +25,45 @@ class DynonSerialReader(object):
 
         self.serial_port = serial_port
         self.serial_reader = None
+        self.__last_read__ = None
 
         self.open_serial_connection()
+
+    def get_time_since_last_read(
+        self
+    ) -> timedelta:
+        """
+        How long has it been since the last successful read?
+
+        Returns:
+            timedelta: How long it has been since the last successful read.
+        """
+        if (self.__last_read__ is None):
+            return timedelta(minutes=90)
+
+        return datetime.now(timezone.utc) - self.__last_read__
+
+    def is_time_to_reconnect(
+        self
+    ) -> bool:
+        """
+        Has it been long enough since the last read to try a full reconnect?
+
+        Returns:
+            bool: Should a full reconnect be attempted?
+        """
+        time_since_last_read = self.get_time_since_last_read()
+
+        return time_since_last_read.total_seconds > 30
+
+    def start_reconnect(
+        self
+    ):
+        """
+        Starts the reconnect process.
+        """
+        self.__last_read__ = None
+        self.serial_reader = None
 
     def open_serial_connection(
         self
@@ -51,7 +91,7 @@ class DynonSerialReader(object):
                 logger.log(
                     'OPENED serial connection to {0}'.format(
                         self.serial_port))
-        except:
+        except Exception:
             self.serial_reader = None
             logger.log(
                 'FAILED attempt to open serial connection to {0}'.format(self.serial_port))
@@ -72,12 +112,15 @@ class DynonSerialReader(object):
                 if serial_bytes != None and len(serial_bytes) > 0:
                     raw_read = str(serial_bytes, encoding='ascii')
                     logger.log(raw_read)
+
+                    self.__last_read__ = datetime.now(timezone.utc)
+
                     return raw_read
             else:
                 self.open_serial_connection()
 
             return ""
-        except:
+        except Exception:
             try:
                 self.serial_reader.close()
             finally:

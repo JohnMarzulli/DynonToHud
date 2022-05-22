@@ -94,7 +94,7 @@ class EfisAndEmsDecoder(object):
         if __get_data_length__(serial_data) != 53:
             return
 
-        hour = serial_data[0:2]
+        hour = serial_data[:2]
         minute = serial_data[2:4]
         second = serial_data[4:6]
         time_fraction = str(float(serial_data[6:8]) / 64.0)[2:4]
@@ -114,7 +114,7 @@ class EfisAndEmsDecoder(object):
 
         is_pressure_alt_and_vsi = ((status_bitmask & 1) == 1)
 
-        current_time = datetime.datetime.utcnow()
+        current_time = datetime.datetime.now(datetime.timezone.utc)
         last_time_received = "{0:04}-{1:02}-{2:02}T{3}:{4}:{5}.{6}Z".format(
             current_time.year,
             current_time.month,

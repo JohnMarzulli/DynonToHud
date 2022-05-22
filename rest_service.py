@@ -60,7 +60,7 @@ class HudServer(object):
         Starts the server.
         """
 
-        print("localhost = {}:{}".format(self.__local_ip__, self.__port__))
+        print(f"localhost = {self.__local_ip__}:{self.__port__}")
 
         self.__httpd__.serve_forever()
 

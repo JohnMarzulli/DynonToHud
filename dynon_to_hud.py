@@ -62,6 +62,11 @@ def read_and_decode_loop(
                 decoder.decode_efis(raw_feed)
                 decoder.decode_ems(raw_feed)
                 decoder.garbage_collect()
+
+                if serial_connection.is_time_to_reconnect():
+                    serial_connection.start_reconnect()
+        except Exception:
+            serial_connection = None
         finally:
             time.sleep(1)
 
