@@ -79,7 +79,7 @@ class DynonSerialReader(object):
                 self.open_serial_connection()
 
             return ""
-        except:
+        except Exception:
             try:
                 self.serial_reader.close()
             finally:

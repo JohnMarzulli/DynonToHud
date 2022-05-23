@@ -82,7 +82,7 @@ class SimulatedDataStream(object):
         # 3 - Save the index
         # 4 - if we move past the end of the data, return None
 
-        max_offset = datetime.datetime.utcnow() - self.__start_time__
+        max_offset = datetime.datetime.now(datetime.timezone.utc) - self.__start_time__
         length = len(self.__data_stream__)
 
         while self.__index__ < length:
@@ -128,7 +128,7 @@ def __is_invalid_serial_data__(
         return True
 
     data_length = len(dynon_serial_data_line)
-    if data_length != VALID_EFIS_DATA_LENGTH and data_length != VALID_EMS_DATA_LENGTH:
+    if data_length not in [VALID_EFIS_DATA_LENGTH, VALID_EMS_DATA_LENGTH]:
         return
 
     return False
@@ -161,7 +161,7 @@ def __get_log_timestamp__(
         recorded_time = recorded_time + millseconds
 
         return recorded_time
-    except:
+    except Exception:
         return None
 
 
@@ -324,7 +324,7 @@ def read_and_decode_loop(
 
             decoder.garbage_collect()
         except Exception as ex:
-            print("EX={}".format(ex))
+            print(f"EX={ex}")
 
 
 def create_simulator_loop_thread(
